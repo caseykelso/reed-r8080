@@ -13,6 +13,7 @@ VENDOR_ZIP := $(DOWNLOAD_DIR)/R8080-software.zip
 VENDOR_ROOT := $(DOWNLOAD_DIR)/vendor
 VENDOR_STAMP := $(VENDOR_ROOT)/.unpacked
 VENDOR_EXE := $(VENDOR_ROOT)/R8080-software/R8080-software/data/OFFLINE/E5CB2A27/704529CA/R8080.exe
+VENDOR_EXE_DIR := $(dir $(VENDOR_EXE))
 VENDOR_URL := https://www.reedinstruments.com/files/softwares/R8080-software.zip
 
 $(CONFIG_STAMP): CMakeLists.txt $(wildcard src/*.cpp) $(wildcard include/**/*.hpp)
@@ -49,6 +50,7 @@ vendor-run: vendor-download
 		echo "Initializing Wine prefix $(WINEPREFIX) (WINEARCH=$(WINEARCH))"; \
 		WINEPREFIX=$(WINEPREFIX) WINEARCH=$(WINEARCH) wineboot -i >/dev/null 2>&1 || exit $$?; \
 	fi
+	@find $(VENDOR_ROOT) -type f -iname '*.dll' \! -path "$(VENDOR_EXE_DIR)*" -exec cp -f {} "$(VENDOR_EXE_DIR)" \;
 	WINEDEBUG=-all WINEPREFIX=$(WINEPREFIX) WINEARCH=$(WINEARCH) wine $(VENDOR_EXE)
 
 clean:
