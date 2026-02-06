@@ -203,30 +203,65 @@ struct HidInfo {
     std::string serial;
 };
 
-HidInfo inspectDevice(const fs::path &hidraw) {
+std::optional<hidraw_devinfo> queryRawInfo(const std::string &devNode) {
+    int fd = open(devNode.c_str(), O_RDONLY | O_NONBLOCK);
+    if (fd < 0) {
+        return std::nullopt;
+    }
+    hidraw_devinfo info{};
+    if (ioctl(fd, HIDIOCGRAWINFO, &info) == -1) {
+        close(fd);
+        return std::nullopt;
+    }
+    close(fd);
+    return info;
+}
+
+HidInfo inspectDevice(const fs::path &hidrawNode, std::optional<fs::path> sysfsEntry = std::nullopt) {
     HidInfo info;
-    info.devNode = hidraw.string();
+    info.devNode = hidrawNode.string();
+
+    if (auto raw = queryRawInfo(info.devNode)) {
+        info.vendor = raw->vendor;
+        info.product = raw->product;
+    }
+
+    fs::path sysEntryPath;
+    if (sysfsEntry) {
+        sysEntryPath = *sysfsEntry;
+    } else {
+        sysEntryPath = fs::path("/sys/class/hidraw") / hidrawNode.filename();
+    }
+
     try {
-        fs::path device = fs::canonical(hidraw / "device");
-        info.vendor = static_cast<uint16_t>(std::stoul(readSmallFile(device / "idVendor"), nullptr, 16));
-        info.product = static_cast<uint16_t>(std::stoul(readSmallFile(device / "idProduct"), nullptr, 16));
+        fs::path device = fs::canonical(sysEntryPath / "device");
         info.manufacturer = readSmallFile(device / "manufacturer");
         info.productString = readSmallFile(device / "product");
-        info.serial = readSmallFile(device / "serial" );
+        info.serial = readSmallFile(device / "serial");
+        if (info.vendor == 0) {
+            std::string vid = readSmallFile(device / "idVendor");
+            if (!vid.empty()) {
+                info.vendor = static_cast<uint16_t>(std::stoul(vid, nullptr, 16));
+            }
+        }
+        if (info.product == 0) {
+            std::string pid = readSmallFile(device / "idProduct");
+            if (!pid.empty()) {
+                info.product = static_cast<uint16_t>(std::stoul(pid, nullptr, 16));
+            }
+        }
     } catch (const std::exception &) {
-        // Ignore missing sysfs entries
+        // sysfs data not available (permissions or device removed)
     }
+
     return info;
 }
 
 std::vector<HidInfo> enumerateDevices() {
     std::vector<HidInfo> devices;
     for (const auto &entry : fs::directory_iterator("/sys/class/hidraw")) {
-        if (!fs::is_directory(entry)) {
-            continue;
-        }
         auto node = fs::path("/dev") / entry.path().filename();
-        devices.push_back(inspectDevice(node));
+        devices.push_back(inspectDevice(node, entry.path()));
     }
     std::sort(devices.begin(), devices.end(), [](const HidInfo &a, const HidInfo &b) {
         return a.devNode < b.devNode;
@@ -237,11 +272,21 @@ std::vector<HidInfo> enumerateDevices() {
 std::optional<HidInfo> autoSelectDevice(const Options &opts) {
     auto devices = enumerateDevices();
     for (const auto &dev : devices) {
-        if (opts.vendor && dev.vendor != *opts.vendor) {
-            continue;
+        if (opts.vendor) {
+            if (dev.vendor == 0) {
+                continue; // unknown vendor, skip until fallback needed
+            }
+            if (dev.vendor != *opts.vendor) {
+                continue;
+            }
         }
-        if (opts.product && dev.product != *opts.product) {
-            continue;
+        if (opts.product) {
+            if (dev.product == 0) {
+                continue;
+            }
+            if (dev.product != *opts.product) {
+                continue;
+            }
         }
         return dev;
     }

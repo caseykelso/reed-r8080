@@ -41,6 +41,13 @@ approximate sound level readings in real time.
    sudo udevadm trigger --attr-match=idVendor=04d9 --attr-match=idProduct=e000
    ```
 
+4. If the permissions still show `root root`, unplug and replug the meter (or
+   reboot) so the new rule takes effect. You should then see something like:
+
+   ```
+   crw-rw-r-- 1 root plugdev 511, 1 ... /dev/hidraw1
+   ```
+
 After these steps `make list` / `make run` should work without `sudo`, and the
 device will report the proper vid/pid instead of `0000:0000`.
 
@@ -54,8 +61,9 @@ You can also use the provided `Makefile` wrapper:
 
 ```bash
 make build             # configure + build via CMake
-make run ARGS="--list"    # convenience runner (defaults to --list)
+make run               # auto-detect first 04d9:e000 hidraw and start streaming
 make list              # shortcut for reed-r8080 --list
+make run ARGS="--descriptor"   # override args when needed
 ```
 ```
 
