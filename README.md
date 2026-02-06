@@ -63,11 +63,82 @@ You can also use the provided `Makefile` wrapper:
 make build             # configure + build via CMake
 make run               # auto-detect 04d9:e000, run `--raw --csv samples.csv`
 make list              # shortcut for reed-r8080 --list
+make vendor-download   # fetch the official Windows utility into downloads/
+make vendor-run        # launch the vendor utility via Wine
 make run ARGS="--descriptor"   # override args when needed
 ```
 ```
 
 The resulting binary will be `build/reed-r8080`.
+
+## Using the vendor Windows software (for protocol tracing)
+
+You may need the official R8080 Windows application to discover which HID
+commands enable streaming. Convenience targets download and run it:
+
+1. Install the prerequisites (Ubuntu/Debian example):
+
+   ```bash
+   sudo apt install wine unzip curl
+   ```
+
+   (If you plan to sniff USB traffic with Wireshark/tshark, also install
+   `wireshark` and accept the prompt to allow non-root captures.)
+
+2. Download and extract the vendor installer:
+
+   ```bash
+   make vendor-download
+   ```
+
+   This drops the vendor ZIP plus `R8080.exe` into `downloads/` (ignored by
+   git).
+
+3. Run the vendor program under Wine:
+
+   ```bash
+   make vendor-run
+   ```
+
+   Adjust environment variables (e.g., `WINEPREFIX`) if you already have a
+   custom Wine setup.
+
+## Capturing USB traffic while the vendor app runs
+
+To reverse engineer the initialization sequence, capture the HID traffic the
+vendor software produces. One workflow is to use the kernel’s `usbmon`
+interface together with Wireshark or tshark:
+
+1. Enable usbmon:
+
+   ```bash
+   sudo modprobe usbmon
+   ```
+
+2. Identify the bus where the meter sits (look for `04d9:e000`):
+
+   ```bash
+   lsusb | grep 04d9:e000
+   ```
+
+   The bus number (first column) maps to the usbmon interface (`usbmon1,
+   usbmon2, …`).
+
+3. Start a capture (choose Wireshark or tshark):
+
+   ```bash
+   sudo wireshark &          # choose usbmonX as the interface
+   # or
+   sudo tshark -i usbmon1 -w r8080-vendor.pcapng
+   ```
+
+4. With the capture running, execute `make vendor-run`, perform the desired
+   actions inside the vendor UI (start live view, etc.), then stop the capture.
+
+5. Filter packets to the Holtek device (`usb.addr == 04d9:e000`) and note the
+   HID output/feature reports being sent. Those byte sequences can be fed into
+   `reed-r8080` via `--feature` (or baked into the tool) to reproduce the same
+   behavior natively.
 
 ## Usage
 
