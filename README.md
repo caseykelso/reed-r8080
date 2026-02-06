@@ -61,7 +61,7 @@ You can also use the provided `Makefile` wrapper:
 
 ```bash
 make build             # configure + build via CMake
-make run               # auto-detect first 04d9:e000 hidraw and start streaming
+make run               # auto-detect 04d9:e000, run `--raw --csv samples.csv`
 make list              # shortcut for reed-r8080 --list
 make run ARGS="--descriptor"   # override args when needed
 ```

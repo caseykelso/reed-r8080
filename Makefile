@@ -1,7 +1,7 @@
 BUILD_DIR ?= build
 BINARY := $(BUILD_DIR)/reed-r8080
 CONFIG_STAMP := $(BUILD_DIR)/.cmake-configured
-ARGS ?=
+ARGS ?= --raw --csv samples.csv
 
 .PHONY: build configure run list clean
 
