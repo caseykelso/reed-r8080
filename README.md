@@ -64,7 +64,7 @@ make build             # configure + build via CMake
 make run               # auto-detect 04d9:e000, run `--raw --csv samples.csv`
 make list              # shortcut for reed-r8080 --list
 make vendor-download   # fetch the official Windows utility into downloads/
-make vendor-run        # launch the vendor utility via Wine
+make vendor-run        # launch the vendor utility via Wine (auto-inits win32 prefix)
 make run ARGS="--descriptor"   # override args when needed
 ```
 ```
@@ -100,8 +100,10 @@ commands enable streaming. Convenience targets download and run it:
    make vendor-run
    ```
 
-   Adjust environment variables (e.g., `WINEPREFIX`) if you already have a
-   custom Wine setup.
+   The Makefile defaults to `WINEPREFIX=$HOME/.wine-r8080` and
+   `WINEARCH=win32`, and it will automatically run `wineboot -i` the first time
+   to initialize that 32-bit prefix. Override these environment variables if you
+   already maintain your own Wine prefixes.
 
 ## Capturing USB traffic while the vendor app runs
 
