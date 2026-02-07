@@ -105,6 +105,29 @@ commands enable streaming. Convenience targets download and run it:
    to initialize that 32-bit prefix. Override these environment variables if you
    already maintain your own Wine prefixes.
 
+### Making the meter visible to the vendor app
+
+Wine does not automatically expose Linux HID devices to Windows programs. If
+the vendor UI launches but claims no meter is attached, use one of the
+approaches below:
+
+1. **Pass the USB device through to Wine (experimental):**
+   * Install libusb for both architectures: `sudo apt install libusb-1.0-0 libusb-1.0-0:i386`.
+   * Run Wine as root so it can detach the kernel driver and claim the device:
+     ```bash
+     sudo -E WINEPREFIX=$HOME/.wine-r8080 WINEARCH=win32 wine downloads/vendor/.../R8080.exe
+     ```
+     (Use `sudo -E` to preserve your prefix path. You may need to replug the
+     meter afterwards to give it back to Linux.)
+   * For troubleshooting, enable USB logging: `WINEDEBUG=+usb ...`.
+
+2. **Use a Windows VM (recommended for USB capture):**
+   * Launch a Windows virtual machine (VirtualBox/VMware/QEMU) and attach the
+     Holtek device (vid:pid 04d9:e000) to the guest.
+   * Install the vendor software inside the VM and verify it can talk to the
+     meter.
+   * Use USBPcap/Wireshark inside the guest to capture the HID traffic.
+
 ## Capturing USB traffic while the vendor app runs
 
 To reverse engineer the initialization sequence, capture the HID traffic the
